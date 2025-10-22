@@ -1,0 +1,913 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== ACCOUNT ====================
+model Account {
+  id        Int     @id @default(autoincrement())
+  isActive  Boolean @default(true) @map("is_active")
+  createdAt BigInt  @default(0) @map("created_at")
+  updatedAt BigInt  @default(0) @map("updated_at")
+
+  email       String      @db.VarChar(255)
+  password    String      @db.VarChar(255)
+  accountType AccountType @map("account_type")
+  phoneNumber String      @map("phone_number") @db.VarChar(20)
+  name String @map("name") @db.VarChar(50)
+  gender Gender 
+  status AccountStatus @default(ACTIVE)
+  dob   DateTime @map("dob")
+  learningGoal String[] @map("learning_goal") 
+  bio   String? @db.Text
+  addressBase    String? @map("address_base") @db.VarChar(255)
+  addressDetail  String? @map("address_detail") @db.VarChar(255)
+  suspendedAt BigInt? @map("suspended_at")
+  suspensionType AccountSuspensionType? @map("suspension_type") @default(ACCOUNT_NOT_SUSPENDED)
+
+  avatarId Int?  @map("avatar_id")  
+  Avatar   File? @relation("accoun_avatar", fields: [avatarId], references: [id])
+  
+  Students Student[] @relation("student_account")
+  Mentors Mentor[]  @relation("mentor_account")
+  UserInterestedCategories UserInterestedCategory[] @relation("user_interested_category")
+  MentorAcceptants Mentor[] @relation("mentor_acceptant")
+  Files File[]
+  Rooms AudioRoom[]
+  Participants AudioRoomParticipant[]
+  CourseCreators Course[] @relation("course_creator")
+  Subscriptions Subscription[] @relation("account_subscription")
+  ChatMessages ChatMessage[] @relation("chat_message_sender")
+  ChatRegistrants ChatParticipant[] @relation("conversation_registrant")
+  ChatParticipants ChatParticipant[] @relation("conversation_participant")
+  Notifications Notification[] @relation("notification_target_account")
+  DeviceTokens DeviceToken[] @relation("account_device_token")
+  Reviewers Feedback[] @relation("reviewer_account")
+  Tokens Token[]
+  Reports Report[] @relation("reporter_account")
+  CourseInteractions Interaction[]
+  ProfileAchievements ProfileAchievement[] @relation("account_profile_achievements")
+  
+  @@unique([email, phoneNumber, isActive])
+  @@map("accounts")
+}
+
+enum AccountSuspensionType {
+  ACCOUNT_NOT_SUSPENDED
+  ACCOUNT_SUSPENDED_3_DAYS
+  ACCOUNT_SUSPENDED_7_DAYS
+  ACCOUNT_SUSPENDED_PERMANENTLY
+}
+
+model Token {
+  id        Int     @id @default(autoincrement())
+  isActive  Boolean @default(true) @map("is_active")
+  createdAt BigInt  @default(0) @map("created_at")
+  updatedAt BigInt  @default(0) @map("updated_at")
+
+  token String @unique
+  accountId Int @map("account_id")
+  type TokenType @map("type")
+  Account   Account @relation(fields: [accountId], references: [id])
+
+  @@map("tokens")
+}
+
+enum TokenType {
+  SESSION
+  VERIFY
+}
+
+enum AccountStatus {
+  ACTIVE
+  INACTIVE // Be used to verify account by email when register
+  SUSPENDED // Be used to suspend account if it violates the rules in the platform
+}
+
+// ==================== STUDENT ====================
+model Student {
+  id        Int     @id @default(autoincrement())
+  isActive  Boolean @default(true) @map("is_active")
+  createdAt BigInt  @default(0) @map("created_at")
+  updatedAt BigInt  @default(0) @map("updated_at")
+
+  major String @db.VarChar(50)
+  educationalLevel EducationalLevel @map("educational_level") 
+
+  accountId Int @map("account_id")
+  Account   Account @relation("student_account",fields: [accountId], references: [id])
+
+  @@map("students") 
+}
+
+model UserInterestedCategory {
+  isActive  Boolean @default(true) @map("is_active")
+  createdAt BigInt  @default(0) @map("created_at")
+  updatedAt BigInt  @default(0) @map("updated_at")
+
+  userId Int @map("user_id")
+  User   Account @relation("user_interested_category", fields: [userId], references: [id])
+
+  categoryId Int      @map("category_id")
+  Category   Category @relation("interested_category_user", fields: [categoryId], references: [id])
+
+  @@id([userId, categoryId])
+  @@map("user_interested_categories")
+}
+
+// ==================== MENTOR ==================== 
+model Mentor {
+  id        Int     @id @default(autoincrement())
+  isActive  Boolean @default(true) @map("is_active")
+  createdAt BigInt  @default(0) @map("created_at")
+  updatedAt BigInt  @default(0) @map("updated_at")
+
+  status MentorStatus @map("status")
+  targetLevels EducationalLevel[] @map("target_level")
+  description String? @db.Text
+  accpetedAt BigInt? @map("accepted_at")
+  rates Int? @default(0)
+  noOfRates Int? @default(0) @map("no_of_rates")
+  meanRates Float? @map("mean_rates") @default(0)
+
+  acceptantId    Int?           @map("acceptant_id")
+  Acceptant      Account?       @relation("mentor_acceptant", fields: [acceptantId], references: [id])
+  fileId Int? @map("file_id")
+  File   File? @relation("cv_file",fields: [fileId], references: [id])
+  accountId Int @map("account_id")
+  Account   Account @relation("mentor_account", fields: [accountId], references: [id])
+
+  MentorSchedules MentorSchedule[] @relation("mentor_schedules")
+
+  @@unique([accountId])
+  @@map("mentors")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum MentorStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+model ProfileAchievement {
+  id        Int     @id @default(autoincrement())
+  isActive  Boolean @default(true) @map("is_active")
+  createdAt BigInt  @default(0) @map("created_at")
+  updatedAt BigInt  @default(0) @map("updated_at")
+  
+  type           AchievementType // experience, education, certification
+  isCurrent     Boolean         @default(false) @map("is_current")
+  name          String? //name of the achievement
+  isVisible      Boolean         @default(true) @map("is_visible")
+  organization   String?         // Can be company or institution or certification body
+  position       String?         // For experience
+  major          String?         // For education
+  startDate      DateTime?      @map("start_date")
+  endDate        DateTime?     @map("end_date")
+  description    String?
+
+  accountId Int @map("account_id")
+  Account   Account @relation("account_profile_achievements",fields: [accountId], references: [id])
+
+  @@index([accountId, type, isVisible,  isActive])
+  @@map("profile_achievements")
+}
+
+enum AchievementType {
+  EXPERIENCE
+  EDUCATION
+  CERTIFICATION
+}
+
+model MentorSchedule {
+  id        Int     @id @default(autoincrement())
+  isActive  Boolean @default(true) @map("is_active")
+  createdAt BigInt  @default(0) @map("created_at")
+  updatedAt BigInt  @default(0) @map("updated_at")
+
+  dayOfWeek DayOfWeek @map("day_of_week")
+  startTime String @map("start_time") // Format: HH:mm
+  endTime String @map("end_time") // Format: HH:mm
+  // isBooked Boolean @default(false) @map("is_booked")
+
+  mentorId Int @map("mentor_id")
+  Mentor   Mentor @relation("mentor_schedules",fields: [mentorId], references: [id])
+  courseId Int? @map("course_id")
+  Course   Course? @relation("mentor_schedule_subscription",fields: [courseId], references: [id])
+
+  Subscriptions Subscription[] @relation("mentor_schedule_subscription")
+
+  @@map("mentor_schedules")
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+
+// ==================== Course ====================
+model Course {
+  id        Int     @id @default(autoincrement())
+  isActive  Boolean @default(true) @map("is_active")
+  createdAt BigInt  @default(0) @map("created_at")
+  updatedAt BigInt  @default(0) @map("updated_at")
+
+  name        String  @db.VarChar(255)
+  status CourseStatus @map("status")
+  description String? @db.Text 
+  totalDuration     Int? @default(0) @map("total_duration")  // In hours
+  price            Decimal @default(0) @map("price")  @db.Decimal(14,2)                       // In VND
+  isPublic         Boolean           @default(true) @map("is_public") // If course is public, it can be accessed by anyone
+  startDate        DateTime?         @map("start_date")// Start date of the course
+  endDate          DateTime?         @map("end_date")// End date of the course
+  objectives      String[]           // Course objectives
+  targetAudiences TargetAudience[] @map("target_audiences")   // Target audiences for the course
+  prerequisites    String[]           // Prerequisites for the course
+  litmitOfStudents Int?              @default(1) @map("limit_of_students") // Limit of students for the course
+  suspendedAt        BigInt?           @map("stopped_at") // Stop date of the course
+  suspensionType CourseSuspensionType? @map("suspension_type") // Suspension type of the course
+  rates Int? @default(0)
+  noOfRates Int? @default(0) @map("no_of_rates")
+  meanRates Float? @map("mean_rates") @default(0)
+  noOfSubscriptions Int? @default(0) @map("no_of_subscriptions")
+
+
+  imageId Int? @map("image_id")
+  Image  File? @relation("course_image",fields: [imageId], references: [id])
+  categoryId Int @map("category_id")
+  Category   Category @relation("course_category", fields: [categoryId], references: [id])
+  creatorId  Int @map("creator_id")
+  Creator    Account @relation("course_creator",fields: [creatorId], references: [id])
+
+  Sections          CourseSection[]         // Program courses have multiple sections
+  Subscriptions Subscription[] @relation("course_subscription")
+  MentorSchedules MentorSchedule[] @relation("mentor_schedule_subscription")
+  AccountInteractions Interaction[]
+
+  @@map("courses")
+}
+
+enum CourseSuspensionType {
+  COURSE_NOT_SUSPENDED
+  COURSE_SUSPENDED_1_DAY
+  COURSE_SUSPENDED_3_DAYS
+  COURSE_SUSPENDED_7_DAYS
+  COURSE_SUSPENDED_PERMANENTLY
+}
+
+enum CourseStatus {
+  DRAFT
+  PENDING
+  STOPPED
+  SUSPENDED
+  ARCHIVED
+  APPROVED
+  REJECTED
+}
+
+enum TargetAudience { 
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+enum CourseType {
+  SINGLE_EVENT
+  PROGRAM
+}
+
+model CourseSection {
+  id        Int     @id @default(autoincrement())
+  isActive  Boolean @default(true) @map("is_active")
+  createdAt BigInt  @default(0) @map("created_at")
+  updatedAt BigInt  @default(0) @map("updated_at")
+
+  title       String  @db.VarChar(255)
+  isPublic     Boolean  @map("is_public")          @default(false) // If section is public, it can be accessed by anyone
+  ordinal     Int               
+  description  String? @db.Text
+  data         String?              // Additional data for the section
+
+  courseId Int @map("course_id")
+  Course   Course @relation(fields: [courseId], references: [id])
+
+  SectionAttachments SectionAttachment[]
+
+  @@map("course_sections")
+}
+
+model SectionAttachment {
+  isActive  Boolean @default(true) @map("is_active")
+  createdAt BigInt  @default(0) @map("created_at")
+  updatedAt BigInt  @default(0) @map("updated_at")
+
+  isPublic Boolean @default(true) @map("is_public")
+
+  sectionId Int @map("section_id")
+  Section   CourseSection @relation(fields: [sectionId], references: [id])
+  fileId   Int @map("file_id")
+  File     File @relation(fields: [fileId], references: [id])
+
+  @@id([sectionId, fileId])
+  @@map("section_attachments")
+}
+
+enum AttachmentType {
+  VIDEO
+  DOCUMENT
+  IMAGE
+}
+
+// ==================== INTERACTIONS ====================
+model Interaction {
+  id             Int       @id @default(autoincrement())
+  type           InteractionType
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  accountId      Int @map("account_id") 
+  Account        Account @relation(fields: [accountId], references: [id])
+  courseId       Int @map("course_id")
+  Course         Course @relation(fields: [courseId], references: [id])
+
+  @@map("interactions")
+}
+
+enum InteractionType {
+  VIEW
+  LIKE
+  RATE
+  COMPLETE
+}
+
+// ==================== CATEGORY ====================
+model Category {
+  id        Int     @id @default(autoincrement())
+  isActive  Boolean @default(true) @map("is_active")
+  createdAt BigInt  @default(0) @map("created_at")
+  updatedAt BigInt  @default(0) @map("updated_at")
+
+  name          String  @db.VarChar(255)
+  slug          String  @db.VarChar(255)
+  description   String? @db.Text
+  noOfProduct   Int     @default(0) @map("no_of_product")
+  level         Int     @db.SmallInt
+  ordinal       Int     @default(0)
+  isRecommended Boolean @default(false) @map("is_recommended")
+
+  parentCategoryId Int?      @map("parent_category_id")
+  ParentCategory   Category? @relation("CategoryParentChild", fields: [parentCategoryId], references: [id])
+
+  imageId Int? @map("image_id")
+  Image   File? @relation("category_image",fields: [imageId], references: [id])
+
+  Courses Course[] @relation("course_category")
+  ChildrenCategories        Category[]                  @relation("CategoryParentChild")
+  UserInterestedCategory UserInterestedCategory[] @relation("interested_category_user")
+
+  @@index([name, isActive])
+  @@map("categories")
+}
+
+
+enum EducationalLevel {
+  PRIMARY
+  SECONDARY
+  HIGH_SCHOOL
+  UNIVERSITY
+//For working people
+  POSTGRADUATE
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+enum AccountType {
+  STUDENT
+  MENTOR
+  ADMIN
+}
+
+
+// ==================== File ====================
+model File {
+  id        Int     @id @default(autoincrement())
+  isActive  Boolean @default(true) @map("is_active")
+  createdAt BigInt  @default(0) @map("created_at")
+  updatedAt BigInt  @default(0) @map("updated_at")
+
+  filename String @default("hello_world") @map("file_name") @db.VarChar(255)
+  publicId String @unique @map("public_id")
+  url      String @map("url")
+  version  Int @default(0) @map("version")
+  signature String @map("signature")
+  resourceType String @map("resource_type")
+  size    Int    @default(0) @map("size")
+  uploadedAt BigInt @map("uploaded_at")
+  isUploaded Boolean @default(false) @map("is_uploaded")
+
+  registrantId Int?     @map("registrant_id") 
+  Registrant   Account? @relation(fields: [registrantId], references: [id])
+
+  AccountAvatars Account[] @relation("accoun_avatar")
+  Categories Category[] @relation("category_image")
+  SectionAttachments SectionAttachment[]
+  ImageVersions ImageVersion[]
+  CvFileMentors Mentor[] @relation("cv_file")
+  CourseImages Course[] @relation("course_image")
+
+  @@map("files")
+}
+
+
+model ImageVersion {
+  id        Int     @id @default(autoincrement())
+  isActive  Boolean @default(true) @map("is_active")
+  createdAt BigInt  @default(0) @map("created_at")
+  updatedAt BigInt  @default(0) @map("updated_at")
+
+  type ImageVersionType
+
+  fileId  Int   @unique @map("file_id")
+  File    File  @relation(fields: [fileId], references: [id])
+
+  @@map("image_versions")
+}
+
+enum ImageVersionType {
+  THUMBNAIL
+  MEDIUM
+  LARGE
+}
+
+// ==================== ROOM ====================
+model AudioRoom {
+  id        Int     @id @default(autoincrement())
+  isActive  Boolean @default(true) @map("is_active")
+  createdAt BigInt  @default(0) @map("created_at")
+  updatedAt BigInt  @default(0) @map("updated_at")
+
+  title          String    @map("title")
+  cid            String?    @unique @map("cid")
+  type           AudioRoomType  @map("type")
+  activeParticipantCount Int @map("active_participant_count") @default(0)
+  isPublic       Boolean  @default(false) @map("is_public")
+  status         RoomStatus @map("status") @default(SCHEDULED)
+  startsAt       BigInt    @map("starts_at")
+  roomUrl        String?    @map("room_url")
+  duration       BigInt?    @map("duration")
+  metadata       Json?      @map("metadata")
+  iat            BigInt?    @map("iat")
+
+  creatorId      Int       @map("creator_id")
+  Creator        Account   @relation(fields: [creatorId], references: [id])
+
+  Participants   AudioRoomParticipant[]
+  Subscriptions Subscription[] @relation("audio_room_subscription") 
+
+  ChatRoom ChatRoom?
+
+  @@map("audio_rooms")
+}
+
+enum RoomStatus {
+  SCHEDULED
+  ONGOING
+  FINISHED
+  CANCELLED
+}
+
+model AudioRoomActivityHistory {
+  id       Int     @id @default(autoincrement())
+  isActive  Boolean @default(true) @map("is_active")
+  createdAt BigInt  @default(0) @map("created_at")
+  updatedAt BigInt  @default(0) @map("updated_at")
+
+  joinedAt       BigInt     @map("joined_at")
+  leftAt         BigInt?     @map("left_at") @default(0)
+
+  audioRoomParticipantId Int @map("audio_room_participant_id")
+  AudioRoomParticipant   AudioRoomParticipant @relation(fields: [audioRoomParticipantId], references: [id])
+
+  @@map("audio_room_activity_histories")
+}
+
+model AudioRoomParticipant {
+  id        Int     @id @default(autoincrement())
+  isActive  Boolean @default(true) @map("is_active")
+  createdAt BigInt  @default(0) @map("created_at")
+  updatedAt BigInt  @default(0) @map("updated_at")
+
+  role           ParticipantAudioRoomRole  @map("role")
+  isInCall       Boolean     @default(false) @map("is_in_room")
+
+  roomId         Int        @map("room_id")
+  AudioRoom      AudioRoom  @relation(fields: [roomId], references: [id])
+  accountId      Int        @map("account_id") 
+  Account        Account    @relation(fields: [accountId], references: [id])
+
+  AudioRoomActivityHistories AudioRoomActivityHistory[]
+
+  @@unique([roomId, accountId])
+  @@map("audio_room_participants")
+}
+
+
+enum AudioRoomType {
+  DEFAULT
+  INTERVIEW
+  AUDIOROOM
+}
+
+enum ParticipantAudioRoomRole {
+  ADMIN
+  USER
+}
+
+
+// ==================== SUBSCRIPTION ====================
+model Subscription {
+  id        Int      @id @default(autoincrement())
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt BigInt   @default(0) @map("created_at")
+  updatedAt BigInt   @default(0) @map("updated_at")
+
+  status         SubscriptionStatus @default(PENDING)
+  originalPrice  Decimal            @default(0) @map("original_price") @db.Decimal(14, 2)
+  message       String?            @db.Text
+  courseAccessStartAt BigInt? @map("course_access_start_at")
+  courseAccessEndAt   BigInt? @map("course_access_end_at")
+  rejectedAt    BigInt? @map("rejected_at")
+  canceledAt    BigInt? @map("canceled_at")
+  approvedAt    BigInt? @map("approved_at")
+  
+  courseId       Int                @map("course_id")
+  Course         Course             @relation("course_subscription", fields: [courseId], references: [id])
+  accountId      Int                @map("account_id")
+  Account        Account            @relation("account_subscription", fields: [accountId], references: [id])
+  
+  mentorScheduleId Int? @map("mentor_schedule_id")
+  MentorSchedule   MentorSchedule? @relation("mentor_schedule_subscription", fields: [mentorScheduleId], references: [id])
+  audioRoomId Int? @map("audio_room_id") 
+  AudioRoom   AudioRoom? @relation("audio_room_subscription",fields: [audioRoomId], references: [id])
+  Feedback Feedback?
+  Report Report?
+
+  Payment Payment? @relation("subscription_payment")
+
+  @@map("subscriptions")
+}
+
+enum SubscriptionStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  ACTIVE
+  EXPIRED
+  CANCELED
+  ENDED
+}
+
+// ==================== PAYMENT ====================
+model Payment {
+  id           Int            @id @default(autoincrement())
+  isActive     Boolean        @default(true) @map("is_active")
+  createdAt    BigInt         @default(0) @map("created_at")
+  updatedAt    BigInt         @default(0) @map("updated_at")
+
+  status       PaymentStatus  @default(IN_PROGRESS)
+  price        Decimal        @default(0) @map("price") @db.Decimal(14, 2)
+  refundedPrice Decimal?      @map("refunded_price") @db.Decimal(14, 2) @default(0)
+  refundedAt   BigInt?        @map("refunded_at")
+
+  subscriptionId Int @map("subscription_id") @unique
+  Subscription   Subscription @relation("subscription_payment", fields: [subscriptionId], references: [id])
+
+  VnpayProviders VnpayProvider[] @relation("vnpay_payment")
+
+  @@map("payments")
+}
+
+enum PaymentStatus {
+  IN_PROGRESS
+  DONE // Authorization Succeeded
+  CANCELED
+  REFUNDING
+  REFUNDED
+  PARTIAL_REFUNDED
+  EXPIRED
+}
+
+model VnpayProvider {
+  id        Int     @id @default(autoincrement())
+  isActive  Boolean @default(true) @map("is_active")
+  createdAt BigInt  @default(0) @map("created_at")
+  updatedAt BigInt  @default(0) @map("updated_at")
+
+  vnp_TxnRef String @map("vnp_TxnRef")
+  vnp_OrderInfo String @map("vnp_OrderInfo")
+  vnp_Amount Decimal @map("vnp_Amount") @db.Decimal(14,2)
+  vnp_BankCode String? @map("vnp_BankCode")
+  vnp_CreatedDate BigInt @map("vnp_createdDate")
+  vnp_PayDate BigInt? @map("vnp_PayDate")
+  vnp_TransactionNo String? @map("vnp_TransactionNo")
+  vnp_TransactionStatus String? @map("vnp_TransactionStatus")
+
+  metadata Json? @map("metadata")
+
+  paymentId Int @map("payment_id") @unique
+  Payment   Payment @relation("vnpay_payment",fields: [paymentId], references: [id])
+
+  @@map("vnpay_providers")
+}
+
+enum VnpayCardType {
+  ATM
+  QR_CODE
+}
+
+
+// ==================== Chat Message ====================
+model ChatMessage {
+  id        Int     @id @default(autoincrement())
+  isActive  Boolean @default(true) @map("is_active")
+  createdAt BigInt  @default(0) @map("created_at")
+  updatedAt BigInt  @default(0) @map("updated_at")
+
+  message String? @db.Text
+  type   ChatMessageType @map("type")
+  isRead  Boolean @default(false) @map("is_read")
+  readAt  BigInt? @map("read_at")
+
+  senderId       Int          @map("sender_id")
+  Sender         Account      @relation("chat_message_sender", fields: [senderId], references: [id])
+  chatRoomId Int          @map("chat_room_id")
+  ChatRoom   ChatRoom @relation("chat_messages_room", fields: [chatRoomId], references: [id])
+
+  @@map("chat_messages")
+}
+
+enum ChatMessageType {
+  TEXT
+  FILE
+}
+
+model ChatRoom {
+  id        Int     @id @default(autoincrement())
+  isActive  Boolean @default(true) @map("is_active")
+  createdAt BigInt  @default(0) @map("created_at")
+  updatedAt BigInt  @default(0) @map("updated_at")
+
+  numberOfMessages     Int              @default(0) @map("number_of_messages")
+  numberOfParticipants Int              @default(0) @map("number_of_participants")
+  chatRoomType     ChatRoomType @default(PRIVATE) @map("chat_room_type")
+  lastMessageId        Int?             @map("last_message_id")
+
+  audioRoomId Int? @map("audio_room_id") @unique
+  AudioRoom   AudioRoom? @relation(fields: [audioRoomId], references: [id])
+
+  ChatMessages             ChatMessage[]             @relation("chat_messages_room")
+  ChatParticipants ChatParticipant[] @relation("chat_participants")
+
+  @@map("chat_rooms")
+}
+
+enum ChatRoomType {
+  PRIVATE
+  GROUP
+}
+
+model ChatParticipant {
+  isActive  Boolean @default(true) @map("is_active")
+  createdAt BigInt  @default(0) @map("created_at")
+  updatedAt BigInt  @default(0) @map("updated_at")
+
+  chatRoomId Int          @map("chat_room_id")
+  ChatRoom   ChatRoom @relation("chat_participants", fields: [chatRoomId], references: [id])
+  participantId  Int          @map("participant_id")
+  Participant    Account      @relation("conversation_participant", fields: [participantId], references: [id])
+
+  registrantId Int?     @map("registrant_id")
+  Registrant   Account? @relation("conversation_registrant", fields: [registrantId], references: [id])
+
+  @@id([chatRoomId, participantId])
+  @@map("chat_participants")
+}
+
+// ==================== NOTIFICATION ====================
+model Notification {
+  id        Int     @id @default(autoincrement())
+  isActive  Boolean @default(true) @map("is_active")
+  createdAt BigInt  @default(0) @map("created_at")
+  updatedAt BigInt  @default(0) @map("updated_at")
+
+  title    String @db.VarChar(255)
+  content  String @db.Text
+
+  type   NotificationType
+  isRead Boolean          @default(false) @map("is_read")
+  readAt BigInt?          @map("read_at")
+
+  scopes NotificationScope[] @default([]) @map("scopes")
+
+  relationType NotificationRelationType @map("relation_type")
+  relationId   Int? @map("relation_id")
+
+  targetAccountId Int?     @map("target_account_id") // target account id is used to show notifications of specific account
+  TargetAccount   Account? @relation("notification_target_account", fields: [targetAccountId], references: [id])
+
+
+  @@map("notifications")
+}
+
+enum NotificationRelationType {
+  COURSE
+  SUBSCRIPTION
+  PAYMENT
+  MENTOR
+  AUDIO_CALL
+  ADMIN
+  FEEDBACK
+  REPORT
+}
+
+enum NotificationType {
+  COURSE_CREATED
+  COURSE_UPDATED
+  COURSE_DELETED
+  COURSE_APPROVED
+  COURSE_REJECTED
+  COURSE_SUSPENDED_WARNING
+  COURSE_SUSPENDED_3_DAYS
+  COURSE_SUSPENDED_7_DAYS
+  COURSE_SUSPENDED_PERMANENTLY
+  COURSE_NOT_YET_SCHEDULED
+  SUBSCRIPTION_CREATED
+  SUBSCRIPTION_APPROVED
+  SUBSCRIPTION_REJECTED
+  SUBSCRIPTION_EXPIRED
+  SUBSCRIPTION_CANCELED_BECAUSE_OF_COURSE_SUSPENSION
+  SUBSCRIPTION_CANCELED_BECAUSE_OF_MENTOR_SUSPENSION
+  SUBSCRIPTION_REFUND_BECAUSE_OF_COURSE_SUSPENSION
+  SUBSCRIPTION_REFUND_BECAUSE_OF_MENTOR_SUSPENSION
+  ACCOUNT_SUSPENDED_WARNING
+  ACCOUNT_SUSPENDED_1_DAY
+  ACCOUNT_SUSPENDED_3_DAYS
+  ACCOUNT_SUSPENDED_7_DAYS
+  ACCOUNT_SUSPENDED_PERMANENTLY
+  AUDIO_CALL_CREATED
+  AUDIO_CALL_STARTED
+  MENTOR_REGISTERD
+  MENTOR_APPROVED
+  MENTOR_REJECTED
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
+  DISCOUNT_AVAILABLE
+  ADMIN_APPROVAL
+  GENERAL_NOTIFICATION
+  //FOR FEEDBACK
+  FEEDBACK_CREATED
+  FEEDBACK_DELETED
+  //FOR REPORT
+  COURSE_REPORTED
+  MENTOR_REPORTED
+  FEEDBACK_REPORTED
+  FEEDBACK_CONTAIN_INAPPROPRIATE_CONTENT
+  REPORT_RESOLVED
+  REPORT_REJECTED
+}
+
+
+enum NotificationScope {
+  ALL
+  INDIVIDUAL
+}
+
+model DeviceToken {
+  id        Int     @id @default(autoincrement())
+  isActive  Boolean @default(true) @map("is_active")
+  createdAt BigInt  @default(0) @map("created_at")
+  updatedAt BigInt  @default(0) @map("updated_at")
+
+  token String @unique
+
+  accountId Int?     @map("account_id")
+  Account   Account? @relation("account_device_token", references: [id], fields: [accountId])
+
+  @@map("device_tokens")
+}
+
+// ==================== Reviews ====================
+model Feedback {
+  id          Int      @id @default(autoincrement())
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   BigInt   @default(0) @map("created_at")
+  updatedAt   BigInt   @default(0) @map("updated_at")
+
+  isVisible   Boolean  @default(true) @map("is_visible") // Whether the review is visible to others
+  courseReview String? @db.Text @map("course_review") // Review content
+  courseRating Int @map("course_rating") // Rating for the course
+  mentorReview String? @db.Text @map("mentor_review") // Review content
+  mentorRating Int @map("mentor_rating") // Rating for the mentor
+
+  reviewerId  Int      @map("reviewer_id") // The account ID of the reviewer
+  Reviewer    Account  @relation("reviewer_account", fields: [reviewerId], references: [id])
+
+  subscriptionId Int @map("subscription_id") @unique
+  Subscription   Subscription @relation(fields: [subscriptionId], references: [id])
+
+  Report Report?
+
+  @@map("feedbacks")
+}
+
+enum ReviewType {
+  COURSE
+  MENTOR
+}
+
+
+//==================== REPORT ====================
+model Report {
+  id          Int      @id @default(autoincrement())
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   BigInt   @default(0) @map("created_at")
+  updatedAt   BigInt   @default(0) @map("updated_at")
+
+  reporterId  Int      @map("reporter_id") // The account ID of the reporter
+  Reporter    Account  @relation("reporter_account", fields: [reporterId], references: [id])
+  description String @db.Text
+  type        ReportType @map("type")
+  status     ReportStatus @default(PENDING)
+  resolution String? @db.Text
+
+  subscriptionId Int? @map("subscription_id") @unique
+  Subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+
+  feedbackId Int? @map("feedback_id") @unique
+  Feedback   Feedback? @relation(fields: [feedbackId], references: [id])
+
+  @@map("reports")
+}
+
+enum ReportStatus {
+  PENDING
+  RESOLVED
+  REJECTED
+}
+
+enum ReportType {
+  COURSE_UNQUALIFIED
+  MENTOR_ISSUES
+  FEEDBACK_INAPPROPRIATE
+}
+
+//==================== ACCOUNT CLICK ====================
+model AccountClick {
+  id        Int     @id @default(autoincrement())
+  isActive  Boolean @default(true) @map("is_active")
+  createdAt BigInt  @default(0) @map("created_at")
+  updatedAt BigInt  @default(0) @map("updated_at")
+
+  studentAccountId Int @map("student_account_id")
+  mentorAccountId Int @map("mentor_account_id")
+
+  noClicks Int @map("no_clicks") @default(0)
+  clickType ClickType @map("click_type")
+
+  @@unique([studentAccountId, mentorAccountId, clickType])
+  @@map("account_clicks")
+}
+
+enum ClickType {
+  VIEW_DETAIL
+  ADD_FAVORITE
+}
+
+
+
+

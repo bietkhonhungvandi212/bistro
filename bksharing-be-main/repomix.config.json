@@ -1,0 +1,26 @@
+{
+  "output": {
+    "filePath": "repomix/prisma.repomix.xml",
+    "style": "xml",
+    "headerText": "Custom header information for the packed file.",
+    "fileSummary": true,
+    "directoryStructure": true,
+    "removeComments": false,
+    "removeEmptyLines": false,
+    "showLineNumbers": false,
+    "copyToClipboard": true,
+    "includeEmptyDirectories": false
+  },
+  "include": ["prisma", "**/*.md"],
+  "ignore": {
+    "useGitignore": true,
+    "useDefaultPatterns": true,
+    "customPatterns": ["additional-folder", "**/*.log"]
+  },
+  "security": {
+    "enableSecurityCheck": true
+  },
+  "tokenCount": {
+    "encoding": "o200k_base"
+  }
+}

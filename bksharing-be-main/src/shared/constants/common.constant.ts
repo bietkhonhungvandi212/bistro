@@ -1,0 +1,16 @@
+export const COMMON_CONSTANT = {
+  ARRAY_MAX_SIZE: 10,
+  ARRAY_MIN_SIZE: 1,
+  DEFAULT_INCREMENT: 1,
+  DEFAULT_DECREMENT: 1,
+  ZERO_VALUE: 0,
+  MAX_LIMIT_OF_STUDENTS: 10,
+  MENTOR_NO_OF_RATE_INCREMENT: 1,
+  COURSE_NO_OF_RATE_INCREMENT: 1,
+};
+
+export const AXIOS_CONFIG = Symbol('AXIOS_CONFIG');
+
+export const numberRegex = /^[0-9]+$/;
+
+export const ACCOUNT_NOT_ACTIVE = false;

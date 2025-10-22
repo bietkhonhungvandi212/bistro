@@ -1,0 +1,55 @@
+services:
+  bksharing:
+    image: nvtuanqti212/bksharing-server:v7.0.1
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - bksharing-network
+
+  watchtower:
+    container_name: watchtower
+    image: containrrr/watchtower
+    environment:
+      - WATCHTOWER_CLEANUP=true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 30 bksharing
+
+  postgres:
+    image: postgres:16.3
+    restart: always
+    ports: 
+      - 5433:5432
+    environment:
+      - POSTGRES_DB=bksharing
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=12345678
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    networks:
+      - bksharing-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $POSTGRES_DB -U $POSTGRES_USER"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  adminer:
+    image: adminer:4.8.1
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - bksharing-network
+
+volumes:
+  postgres:
+    driver: local
+
+networks:
+  bksharing-network:
+    driver: bridge
